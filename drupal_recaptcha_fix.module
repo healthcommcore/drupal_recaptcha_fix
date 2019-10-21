@@ -1,0 +1,48 @@
+<?php
+use Drupal\Core\Form\FormBase;
+use Drupal\Core\Form\FormStateInterface;
+
+/**
+ * Implements hook_element_info_alter().
+ */
+function drupal_recaptcha_fix_element_info_alter(array &$info) {
+  if (isset($info['captcha'])) {
+    // Adds custom process function to captcha element.
+    $info['captcha']['#process'][] = 'drupal_recaptcha_fix_element_captcha_process';
+  }
+}
+
+/**
+ * Removes 'captcha_validate' for reCaptcha.
+ *
+ * For this captcha type check of captcha session doesn't needed because
+ * solution is stored in reCaptcha service. Also it resolves issue with cached
+ * by Varnish pages.
+ * Note: some degradation of captcha module will be - statistics
+ * won't work but it is disabled on this project.
+ */
+function drupal_recaptcha_fix_element_captcha_process($element) {
+  $default_challenge = \Drupal::config('captcha.settings')->get('default_challenge');
+
+  if (!empty($element['#element_validate'])
+    && ($element['#captcha_type'] == 'recaptcha/reCAPTCHA')
+    || ($element['#captcha_type'] == 'default' && $default_challenge == 'recaptcha/reCAPTCHA')) {
+    foreach ($element['#element_validate'] as $key => $value) {
+      if ($value == 'captcha_validate') {
+        $element['#element_validate'][$key] = 'drupal_recaptcha_fix_recaptcha_validation';
+      }
+    }
+  }
+  return $element;
+}
+
+/**
+ * Replacement of captcha_validate() function.
+ */
+function drupal_recaptcha_fix_recaptcha_validation($element, FormStateInterface &$form_state) {
+  $result = recaptcha_captcha_validation('', '', $element, $form_state);
+  if (!$result) {
+    $form_state->setErrorByName('captcha_response', t('The answer you entered for the CAPTCHA was not correct.'));
+  }
+}
+

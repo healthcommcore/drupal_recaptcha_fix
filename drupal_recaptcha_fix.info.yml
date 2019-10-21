@@ -1,0 +1,6 @@
+name: Drupal reCAPTCHA fix
+description: Attempt to fix persistent CAPTCHA validation error when reCAPTCHA used with Webform
+package: Custom
+type: module
+version: 1.0
+core: 8.x
